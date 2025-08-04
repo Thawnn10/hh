@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tài Xỉu Online - Phiên bản giải trí</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+        
+        .pulse-effect {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .shake-effect {
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        .dice-face {
+            display: grid;
+            grid-template-areas:
+                "a . c"
+                "e g f"
+                "d . b";
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            width: 100%;
+            height: 100%;
+        }
+        
+        .pip {
+            display: block;
+            align-self: center;
+            justify-self: center;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: red;
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .pip:nth-child(1) { grid-area: a; }
+        .pip:nth-child(2) { grid-area: b; }
+        .pip:nth-child(3) { grid-area: c; }
+        .pip:nth-child(4) { grid-area: d; }
+        .pip:nth-child(5) { grid-area: e; }
+        .pip:nth-child(6) { grid-area: f; }
+        .pip:nth-child(odd):last-child { grid-area: g; }
+    </style>
+</head>
+<body class="bg-[#0D1521] text-white">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header với thông báo giả -->
+        <div class="flex justify-between items-center mb-6 bg-[#1A202C] p-3 rounded-lg border-b-2 border-[#3182CE]">
+            <div class="flex items-center">
+                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/5edd4ad9-1a28-4826-8de4-b9c1d1717d4d.png" alt="Game Logo" class="mr-2">
+                <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-yellow-600">TAI XIU VIP</h1>
+            </div>
+            <div class="bg-[#2D3748] text-yellow-300 px-4 py-2 rounded-full text-sm font-medium tracking-wide pulse-effect">
+                <span id="fakeNotifications" class="marquee">Người chơi HoangLong vừa thắng 15,000,000 VND! ★ VIP123 vừa nạp 50,000,000 VND ★</span>
+            </div>
+        </div>
+        
+        <!-- Bảng điều khiển tổng tiền -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <span class="text-gray-400">Số dư:</span>
+                    <span id="balance" class="text-2xl font-bold text-green-500 ml-2">10,000,000 VND</span>
+                </div>
+                <button id="depositBtn" class="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded">
+                    Nạp tiền
+                </button>
+            </div>
+            
+            <!-- Modal nạp tiền -->
+            <div id="depositModal" class="fixed inset-0 bg-black bg-opacity-75 hidden flex items-center justify-center z-50">
+                <div class="bg-gray-800 rounded-lg p-6 w-96">
+                    <h3 class="text-xl font-bold mb-4">Nạp tiền ảo vào tài khoản</h3>
+                    <input id="depositAmount" type="number" placeholder="Nhập số tiền" class="w-full p-2 mb-4 bg-gray-700 rounded text-white">
+                    <div class="flex justify-between">
+                        <button class="quick-deposit bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded" data-amount="1000000">+1 triệu</button>
+                        <button class="quick-deposit bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded" data-amount="5000000">+5 triệu</button>
+                        <button class="quick-deposit bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded" data-amount="10000000">+10 triệu</button>
+                        <button class="quick-deposit bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded" data-amount="50000000">+50 triệu</button>
+                    </div>
+                    <div class="mt-6 flex justify-between">
+                        <button id="confirmDeposit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+                            Xác nhận
+                        </button>
+                        <button id="cancelDeposit" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">
+                            Hủy bỏ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Lịch sử kết quả -->
+        <div class="mb-6">
+            <h3 class="text-xl font-bold mb-2">Lịch sử kết quả</h3>
+            <div id="resultHistory" class="flex space-x-2 overflow-x-auto pb-2">
+                <!-- Các kết quả trước sẽ được thêm vào đây -->
+            </div>
+        </div>
+        
+        <!-- Bàn chơi -->
+        <div class="bg-[#1F2937] rounded-xl p-6 mb-6 border border-[#2D3748]">
+            <div id="gameArea" class="flex flex-col items-center">
+                <!-- 3 con xúc xắc -->
+                <div class="flex space-x-8 mb-8 bg-[#2D3748] p-6 rounded-xl border border-[#4A5568]">
+                    <div class="w-24 h-24 bg-white rounded-lg shadow-lg flex items-center justify-center">
+                        <div id="dice1" class="dice-face">
+                            <!-- Điểm sẽ được thêm bằng JS -->
+                        </div>
+                    </div>
+                    <div class="w-24 h-24 bg-white rounded-lg shadow-lg flex items-center justify-center">
+                        <div id="dice2" class="dice-face">
+                            <!-- Điểm sẽ được thêm bằng JS -->
+                        </div>
+                    </div>
+                    <div class="w-24 h-24 bg-white rounded-lg shadow-lg flex items-center justify-center">
+                        <div id="dice3" class="dice-face">
+                            <!-- Điểm sẽ được thêm bằng JS -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Thông báo kết quả -->
+                <div id="resultText" class="text-2xl font-bold mb-8"></div>
+                
+                <!-- Đếm ngược -->
+                <div class="mb-6">
+                    <div class="text-center mb-2">Thời gian đặt cược còn lại:</div>
+                    <div id="countdown" class="text-3xl font-bold text-yellow-400">30</div>
+                </div>
+                
+                <!-- Nút đặt cược -->
+                <div class="grid grid-cols-2 gap-4 w-full max-w-md mb-6">
+                    <button id="betTai" class="bg-gradient-to-b from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white font-bold py-4 px-6 rounded-xl text-xl shadow-lg shadow-green-500/20">
+                        TÀI (11-17)
+                    </button>
+                    <button id="betXiu" class="bg-gradient-to-b from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 text-white font-bold py-4 px-6 rounded-xl text-xl shadow-lg shadow-red-500/20">
+                        XỈU (4-10)
+                    </button>
+                </div>
+                
+                <!-- Nhập số tiền cược -->
+                <div class="w-full max-w-md">
+                    <label for="betAmount" class="block mb-2">Số tiền cược:</label>
+                    <div class="flex">
+                        <input id="betAmount" type="number" value="100000" min="10000" class="flex-grow p-2 bg-gray-700 rounded-l text-white">
+                        <button id="maxBet" class="bg-blue-500 hover:bg-blue-600 text-white px-3 rounded-r">MAX</button>
+                    </div>
+                    <div class="flex justify-between mt-2">
+                        <button class="quick-bet bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded" data-bet="100000">100K</button>
+                        <button class="quick-bet bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded" data-bet="500000">500K</button>
+                        <button class="quick-bet bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded" data-bet="1000000">1M</button>
+                        <button class="quick-bet bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded" data-bet="5000000">5M</button>
+                        <button class="quick-bet bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded" data-bet="10000000">10M</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal chiến thắng -->
+            <div id="winModal" class="fixed inset-0 bg-black bg-opacity-75 hidden flex items-center justify-center z-50 animate-[slideUp_0.3s_ease-out]">
+                <div class="bg-gray-800 rounded-lg p-8 w-96 text-center">
+                    <div class="text-4xl font-bold text-yellow-400 mb-4">CHÚC MỪNG!</div>
+                    <div id="winAmount" class="text-3xl font-bold text-green-500 mb-6">Bạn đã thắng 1,500,000 VND</div>
+                    <div id="winMessage" class="mb-6">Tiếp tục để có cơ hội thắng lớn hơn!</div>
+                    <div class="flex justify-center space-x-4">
+                        <button id="collectWin" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded">
+                            Nhận thưởng
+                        </button>
+                        <button id="keepPlaying" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded">
+                            Chơi tiếp
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Thông tin người chơi giả -->
+        <div class="bg-gray-800 rounded-lg p-4">
+            <h3 class="text-xl font-bold mb-3">Người chơi đang bàn</h3>
+            <div id="fakePlayers" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <!-- Danh sách người chơi giả sẽ được thêm tự động -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Biến trạng thái
+        let balance = 10000000; // 10 triệu ban đầu
+        let currentBet = 0;
+        let betType = null; // 'tai' hoặc 'xiu'
+        let countdown = 30;
+        let gameInterval;
+        let resultsHistory = [];
+        let fakePlayers = [
+            { name: 'HoangLong', balance: 23500000 },
+            { name: 'PhuongThao98', balance: 7800000 },
+            { name: 'MinhTuanPro', balance: 45300000 },
+            { name: 'HaiBang2011', balance: 12500000 },
+            { name: 'NgocLan2000', balance: 9800000 },
+            { name: 'DucAnhVIP', balance: 36700000 }
+        ];
+        
+        // DOM elements
+        const balanceDisplay = document.getElementById('balance');
+        const betAmountInput = document.getElementById('betAmount');
+        const resultText = document.getElementById('resultText');
+        const countdownDisplay = document.getElementById('countdown');
+        const resultHistory = document.getElementById('resultHistory');
+        const depositModal = document.getElementById('depositModal');
+        const depositBtn = document.getElementById('depositBtn');
+        const confirmDeposit = document.getElementById('confirmDeposit');
+        const cancelDeposit = document.getElementById('cancelDeposit');
+        const depositAmountInput = document.getElementById('depositAmount');
+        const winModal = document.getElementById('winModal');
+        const winAmountDisplay = document.getElementById('winAmount');
+        const collectWinBtn = document.getElementById('collectWin');
+        const keepPlayingBtn = document.getElementById('keepPlaying');
+        const fakePlayersContainer = document.getElementById('fakePlayers');
+        const fakeNotifications = document.getElementById('fakeNotifications');
+        
+        // Khởi tạo game
+        initGame();
+        
+        function initGame() {
+            updateBalance();
+            renderFakePlayers();
+            generateFakeResults();
+            startGameLoop();
+            
+            // Set up event listeners
+            document.getElementById('betTai').addEventListener('click', () => placeBet('tai'));
+            document.getElementById('betXiu').addEventListener('click', () => placeBet('xiu'));
+            document.getElementById('maxBet').addEventListener('click', setMaxBet);
+            depositBtn.addEventListener('click', showDepositModal);
+            confirmDeposit.addEventListener('click', processDeposit);
+            cancelDeposit.addEventListener('click', hideDepositModal);
+            collectWinBtn.addEventListener('click', collectWin);
+            keepPlayingBtn.addEventListener('click', () => {
+                winModal.classList.add('hidden');
+            });
+            
+            // Quick bet buttons
+            document.querySelectorAll('.quick-bet').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    betAmountInput.value = this.getAttribute('data-bet');
+                });
+            });
+            
+            // Quick deposit buttons
+            document.querySelectorAll('.quick-deposit').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    depositAmountInput.value = this.getAttribute('data-amount');
+                });
+            });
+            
+            // Đổi tin nhắn giả mỗi 5 giây
+            setInterval(changeFakeNotification, 5000);
+        }
+        
+        function startGameLoop() {
+            clearInterval(gameInterval);
+            gameInterval = setInterval(() => {
+                countdown--;
+                countdownDisplay.textContent = countdown;
+                
+                if (countdown <= 0) {
+                    clearInterval(gameInterval);
+                    rollDice();
+                    setTimeout(() => {
+                        calculateResult();
+                        countdown = 30;
+                        startGameLoop();
+                    }, 3000);
+                }
+            }, 1000);
+        }
+        
+        function placeBet(type) {
+            const amount = parseInt(betAmountInput.value);
+            
+            if (isNaN(amount) || amount <= 0) {
+                alert('Vui lòng nhập số tiền cược hợp lệ');
+                return;
+            }
+            
+            if (amount > balance) {
+                alert('Số dư không đủ để đặt cược');
+                return;
+            }
+            
+            if (countdown <= 5) {
+                alert('Không thể đặt cược khi sắp hết thời gian');
+                return;
+            }
+            
+            betType = type;
+            currentBet = amount;
+            balance -= amount;
+            updateBalance();
+            
+            // Hiệu ứng nút đặt cược
+            const betButton = type === 'tai' ? document.getElementById('betTai') : document.getElementById('betXiu');
+            betButton.classList.add('pulse-effect');
+            setTimeout(() => {
+                betButton.classList.remove('pulse-effect');
+            }, 1000);
+            
+            alert(`Bạn đã đặt ${formatMoney(amount)} VND vào ${type === 'tai' ? 'TÀI' : 'XỈU'}`);
+        }
+        
+        function rollDice() {
+            const dice1 = document.getElementById('dice1');
+            const dice2 = document.getElementById('dice2');
+            const dice3 = document.getElementById('dice3');
+            
+            // Hiệu ứng lắc
+            dice1.parentElement.classList.add('shake-effect');
+            dice2.parentElement.classList.add('shake-effect');
+            dice3.parentElement.classList.add('shake-effect');
+            
+            // Tạo hiệu ứng xoay các mặt xúc xắc
+            let rolls = 0;
+            const rollInterval = setInterval(() => {
+                showRandomDiceFace(dice1);
+                showRandomDiceFace(dice2);
+                showRandomDiceFace(dice3);
+                
+                rolls++;
+                if (rolls > 10) {
+                    clearInterval(rollInterval);
+                    dice1.parentElement.classList.remove('shake-effect');
+                    dice2.parentElement.classList.remove('shake-effect');
+                    dice3.parentElement.classList.remove('shake-effect');
+                    
+                    // Kết quả cuối cùng
+                    const diceValues = [
+                        Math.floor(Math.random() * 6) + 1,
+                        Math.floor(Math.random() * 6) + 1,
+                        Math.floor(Math.random() * 6) + 1
+                    ];
+                    
+                    showDiceFace(dice1, diceValues[0]);
+                    showDiceFace(dice2, diceValues[1]);
+                    showDiceFace(dice3, diceValues[2]);
+                    
+                    return diceValues;
+                }
+            }, 100);
+        }
+        
+        function showRandomDiceFace(diceElement) {
+            const randomValue = Math.floor(Math.random() * 6) + 1;
+            showDiceFace(diceElement, randomValue);
+        }
+        
+        function showDiceFace(diceElement, value) {
+            diceElement.innerHTML = '';
+            const pips = [];
+            
+            // Tạo các chấm trên mặt xúc xắc tùy theo giá trị
+            for (let i = 0; i < value; i++) {
+                pips.push(document.createElement('span'));
+            }
+            
+            pips.forEach(pip => {
+                pip.className = 'pip';
+                diceElement.appendChild(pip);
+            });
+        }
+        
+        function calculateResult() {
+            const dice1 = document.getElementById('dice1');
+            const dice2 = document.getElementById('dice2');
+            const dice3 = document.getElementById('dice3');
+            
+            // Giả định giá trị xúc xắc (thực tế sẽ được tính từ hình ảnh hiển thị)
+            const diceValues = [
+                Math.floor(Math.random() * 6) + 1,
+                Math.floor(Math.random() * 6) + 1,
+                Math.floor(Math.random() * 6) + 1
+            ];
+            
+            showDiceFace(dice1, diceValues[0]);
+            showDiceFace(dice2, diceValues[1]);
+            showDiceFace(dice3, diceValues[2]);
+            
+            const total = diceValues.reduce((sum, value) => sum + value, 0);
+            const result = total >= 11 ? 'tai' : 'xiu';
+            
+            // Thêm vào lịch sử
+            addToHistory(diceValues, result);
+            
+            // Cập nhật phòng chơi với người chơi giả
+            updateFakePlayersAfterResult(result);
+            
+            // Nếu có đặt cược
+            if (currentBet > 0) {
+                if (betType === result) {
+                    // Thắng cược
+                    const winAmount = currentBet * 1.95; // Tỉ lệ 1.95
+                    balance += winAmount;
+                    updateBalance();
+                    
+                    // Hiển thị modal chiến thắng
+                    winAmountDisplay.textContent = `Bạn đã thắng ${formatMoney(winAmount)} VND`;
+                    winModal.classList.remove('hidden');
+                    
+                    resultText.textContent = `Tổng ${total} - ${result.toUpperCase()}! Bạn thắng ${formatMoney(winAmount)} VND`;
+                    resultText.className = 'text-2xl font-bold mb-8 text-green-500';
+                } else {
+                    // Thua cược
+                    resultText.textContent = `Tổng ${total} - ${result.toUpperCase()}! Bạn đã thua ${formatMoney(currentBet)} VND`;
+                    resultText.className = 'text-2xl font-bold mb-8 text-red-500';
+                }
+                
+                currentBet = 0;
+                betType = null;
+            } else {
+                resultText.textContent = `Tổng ${total} - ${result.toUpperCase()}!`;
+                resultText.className = 'text-2xl font-bold mb-8 text-yellow-400';
+            }
+            
+            // Thay đổi số dư ngẫu nhiên cho người chơi giả
+            fakePlayers.forEach(player => {
+                const change = Math.random() > 0.3 ? 
+                    Math.floor(Math.random() * 5000000) : 
+                    -Math.floor(Math.random() * 3000000);
+                player.balance += change;
+                if (player.balance < 0) player.balance = 0;
+            });
+            
+            renderFakePlayers();
+        }
+        
+        function addToHistory(diceValues, result) {
+            const total = diceValues.reduce((sum, value) => sum + value, 0);
+            resultsHistory.unshift({ diceValues, total, result });
+            
+            if (resultsHistory.length > 10) {
+                resultsHistory.pop();
+            }
+            
+            renderHistory();
+        }
+        
+        function renderHistory() {
+            resultHistory.innerHTML = '';
+            resultsHistory.forEach((result, index) => {
+                const historyItem = document.createElement('div');
+                historyItem.className = `flex flex-col items-center justify-center w-12 h-12 rounded-full ${result.result === 'tai' ? 'bg-green-600' : 'bg-red-600'}`;
+                historyItem.innerHTML = `
+                    <div class="text-xs">${index === 0 ? 'Mới' : ''}</div>
+                    <div class="font-bold">${result.total}</div>
+                `;
+                resultHistory.appendChild(historyItem);
+            });
+        }
+        
+        function generateFakeResults() {
+            for (let i = 0; i < 5; i++) {
+                const diceValues = [
+                    Math.floor(Math.random() * 6) + 1,
+                    Math.floor(Math.random() * 6) + 1,
+                    Math.floor(Math.random() * 6) + 1
+                ];
+                const total = diceValues.reduce((sum, value) => sum + value, 0);
+                const result = total >= 11 ? 'tai' : 'xiu';
+                resultsHistory.push({ diceValues, total, result });
+            }
+            
+            renderHistory();
+        }
+        
+        function updateFakePlayersAfterResult(result) {
+            // Ngẫu nhiên một số người chơi giả thắng/thua theo kết quả
+            fakePlayers.forEach(player => {
+                if (Math.random() > 0.5) {
+                    const winAmount = Math.floor(Math.random() * 3000000);
+                    if (result === 'tai') {
+                        player.balance += winAmount;
+                    } else {
+                        player.balance -= Math.min(winAmount, player.balance * 0.3);
+                    }
+                } else {
+                    const loseAmount = Math.floor(Math.random() * 2000000);
+                    if (result === 'tai') {
+                        player.balance -= Math.min(loseAmount, player.balance * 0.2);
+                    } else {
+                        player.balance += loseAmount;
+                    }
+                }
+                player.balance = Math.max(0, player.balance);
+            });
+        }
+        
+        function renderFakePlayers() {
+            fakePlayersContainer.innerHTML = '';
+            fakePlayers.forEach(player => {
+                const playerEl = document.createElement('div');
+                playerEl.className = 'bg-gray-700 rounded-lg p-3';
+                playerEl.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold">${player.name}</span>
+                        <span class="text-sm px-2 py-1 rounded ${player.balance > 10000000 ? 'bg-green-600' : 'bg-blue-600'}">
+                            VIP ${Math.floor(Math.random() * 3) + 1}
+                        </span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Số dư:</span>
+                        <span class="font-bold ${player.balance > 30000000 ? 'text-yellow-400' : ''}">${formatMoney(player.balance)} VND</span>
+                    </div>
+                `;
+                fakePlayersContainer.appendChild(playerEl);
+            });
+        }
+        
+        function changeFakeNotification() {
+            const players = ['HoangLong', 'MinhTuanPro', 'NgocLan2000', 'DucAnhVIP', 'HaiBang2011'];
+            const actions = [
+                'vừa thắng', 
+                'vừa trúng', 
+                'đã kiếm được', 
+                'vừa nhận thưởng', 
+                'đã thắng lớn'
+            ];
+            const amounts = [
+                '15,000,000 VND', 
+                '8,500,000 VND', 
+                '22,000,000 VND', 
+                '10,000,000 VND', 
+                '5,000,000 VND',
+                '30,000,000 VND'
+            ];
+            
+            const randomPlayer = players[Math.floor(Math.random() * players.length)];
+            const randomAction = actions[Math.floor(Math.random() * actions.length)];
+            const randomAmount = amounts[Math.floor(Math.random() * amounts.length)];
+            
+            fakeNotifications.textContent = `${randomPlayer} ${randomAction} ${randomAmount}!`;
+        }
+        
+        function setMaxBet() {
+            betAmountInput.value = balance;
+        }
+        
+        function updateBalance() {
+            balanceDisplay.textContent = formatMoney(balance) + ' VND';
+        }
+        
+        function formatMoney(amount) {
+            return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+        
+        function showDepositModal() {
+            depositModal.classList.remove('hidden');
+        }
+        
+        function hideDepositModal() {
+            depositModal.classList.add('hidden');
+            depositAmountInput.value = '';
+        }
+        
+        function processDeposit() {
+            const amount = parseInt(depositAmountInput.value);
+            
+            if (isNaN(amount) || amount <= 0) {
+                alert('Vui lòng nhập số tiền hợp lệ');
+                return;
+            }
+            
+            balance += amount;
+            updateBalance();
+            hideDepositModal();
+            alert(`Bạn đã nạp thành công ${formatMoney(amount)} VND vào tài khoản`);
+            
+            // Tạo lịch sử nạp tiền giả ngẫu nhiên
+            if (Math.random() > 0.5) {
+                const fakeBonus = Math.floor(Math.random() * amount * 0.1);
+                if (fakeBonus > 0) {
+                    balance += fakeBonus;
+                    updateBalance();
+                    setTimeout(() => {
+                        alert(`Chúc mừng bạn nhận được thưởng thêm ${formatMoney(fakeBonus)} VND từ nhà cái`);
+                    }, 500);
+                }
+            }
+        }
+        
+        function collectWin() {
+            winModal.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
